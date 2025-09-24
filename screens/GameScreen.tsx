@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Game, Period, LineupSuggestion, Player } from '../types';
 
 interface GameScreenProps {
@@ -189,7 +190,8 @@ export default function GameScreen({
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
       {renderPeriodProgress()}
 
       {renderCurrentLineup()}
@@ -209,14 +211,18 @@ export default function GameScreen({
           Tap a bench player to swap with the selected player
         </Text>
       )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  container: {
+    flex: 1,
     padding: 16,
   },
   progressContainer: {

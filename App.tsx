@@ -3,13 +3,16 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import RosterScreen from './screens/RosterScreen';
 import GameScreen from './screens/GameScreen';
 import StatsScreen from './screens/StatsScreen';
+import TeamsScreen from './screens/TeamsScreen';
 
-import { Game, Player, Period, LineupSuggestion, GameSettings } from './types';
+import { Game, Player, Period, LineupSuggestion, GameSettings, Team, CoachProfile } from './types';
 import { GameManager } from './utils/gameManager';
+import TeamEditModal from './components/TeamEditModal';
 
 const Tab = createBottomTabNavigator();
 
@@ -36,12 +39,37 @@ const defaultGameSettings: GameSettings = {
   playersOnCourt: 5,
 };
 
+const createDefaultCoachProfile = (): CoachProfile => ({
+  id: 'coach-1',
+  name: 'Coach',
+  isPremium: false,
+  teams: [
+    {
+      id: 'team-1',
+      name: 'Sample Team',
+      primaryColor: '#2196F3',
+      secondaryColor: '#bbdefb',
+      players: createSampleRoster(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  ],
+  activeTeamId: 'team-1',
+});
+
 export default function App() {
+  const [coachProfile, setCoachProfile] = useState<CoachProfile>(createDefaultCoachProfile());
+  const [showTeamEdit, setShowTeamEdit] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+
+  const activeTeam = coachProfile.teams.find(t => t.id === coachProfile.activeTeamId) || coachProfile.teams[0];
+
   const [game, setGame] = useState<Game>({
     id: 'game-1',
+    teamId: activeTeam?.id || 'team-1',
     date: new Date(),
     settings: defaultGameSettings,
-    roster: createSampleRoster(),
+    roster: activeTeam?.players || [],
     periods: [],
     isActive: false,
   });
@@ -74,13 +102,21 @@ export default function App() {
       ...prev,
       roster: updatedRoster,
     }));
+
+    // Also update the team's player list
+    updateActiveTeamPlayers(updatedRoster);
   };
 
   const handlePlayerAdd = (newPlayer: Player) => {
+    const updatedRoster = [...game.roster, newPlayer];
+
     setGame(prev => ({
       ...prev,
-      roster: [...prev.roster, newPlayer],
+      roster: updatedRoster,
     }));
+
+    // Also update the team's player list
+    updateActiveTeamPlayers(updatedRoster);
   };
 
   const handlePlayerDelete = (playerId: string) => {
@@ -89,6 +125,140 @@ export default function App() {
     setGame(prev => ({
       ...prev,
       roster: updatedRoster,
+    }));
+
+    // Also update the team's player list
+    updateActiveTeamPlayers(updatedRoster);
+  };
+
+  // Team management functions
+  const updateActiveTeamPlayers = (players: Player[]) => {
+    setCoachProfile(prev => ({
+      ...prev,
+      teams: prev.teams.map(team =>
+        team.id === prev.activeTeamId
+          ? { ...team, players, updatedAt: new Date() }
+          : team
+      ),
+    }));
+  };
+
+  const handleTeamSelect = (team: Team) => {
+    setCoachProfile(prev => ({
+      ...prev,
+      activeTeamId: team.id,
+    }));
+
+    // Update game with new team's roster
+    setGame(prev => ({
+      ...prev,
+      teamId: team.id,
+      roster: team.players,
+      periods: [],
+      isActive: false,
+    }));
+
+    setCurrentPeriod(null);
+    setLineupSuggestion(null);
+  };
+
+  const handleTeamEdit = (team: Team) => {
+    setEditingTeam(team);
+    setShowTeamEdit(true);
+  };
+
+  const handleCreateTeam = () => {
+    setEditingTeam(null);
+    setShowTeamEdit(true);
+  };
+
+  const handleTeamSave = (team: Team) => {
+    if (editingTeam) {
+      // Update existing team
+      setCoachProfile(prev => ({
+        ...prev,
+        teams: prev.teams.map(t => t.id === team.id ? team : t),
+      }));
+    } else {
+      // Add new team
+      setCoachProfile(prev => ({
+        ...prev,
+        teams: [...prev.teams, team],
+        activeTeamId: team.id, // Auto-select new team
+      }));
+
+      // Switch to new team
+      setGame(prev => ({
+        ...prev,
+        teamId: team.id,
+        roster: team.players,
+        periods: [],
+        isActive: false,
+      }));
+    }
+
+    setShowTeamEdit(false);
+    setEditingTeam(null);
+  };
+
+  const handleTeamDelete = (teamId: string) => {
+    const remainingTeams = coachProfile.teams.filter(t => t.id !== teamId);
+
+    if (remainingTeams.length === 0) {
+      // Create a default team if all teams are deleted
+      const defaultTeam: Team = {
+        id: `team-${Date.now()}`,
+        name: 'New Team',
+        primaryColor: '#2196F3',
+        secondaryColor: '#bbdefb',
+        players: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      setCoachProfile(prev => ({
+        ...prev,
+        teams: [defaultTeam],
+        activeTeamId: defaultTeam.id,
+      }));
+
+      setGame(prev => ({
+        ...prev,
+        teamId: defaultTeam.id,
+        roster: [],
+        periods: [],
+        isActive: false,
+      }));
+    } else {
+      const newActiveTeam = remainingTeams[0];
+
+      setCoachProfile(prev => ({
+        ...prev,
+        teams: remainingTeams,
+        activeTeamId: newActiveTeam.id,
+      }));
+
+      if (teamId === coachProfile.activeTeamId) {
+        setGame(prev => ({
+          ...prev,
+          teamId: newActiveTeam.id,
+          roster: newActiveTeam.players,
+          periods: [],
+          isActive: false,
+        }));
+      }
+    }
+
+    setShowTeamEdit(false);
+    setEditingTeam(null);
+  };
+
+  const handleUpgradeToPremium = () => {
+    // TODO: Implement actual subscription logic
+    setCoachProfile(prev => ({
+      ...prev,
+      isPremium: true,
+      subscriptionExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
     }));
   };
 
@@ -141,9 +311,38 @@ export default function App() {
     }
   };
 
-  if (!game.isActive) {
+  const [showRosterFromTeams, setShowRosterFromTeams] = useState(false);
+
+  if (!game.isActive && !showRosterFromTeams) {
     return (
-      <View style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <TeamsScreen
+          coachProfile={coachProfile}
+          onTeamSelect={handleTeamSelect}
+          onTeamEdit={handleTeamEdit}
+          onCreateTeam={handleCreateTeam}
+          onUpgradeToPremium={handleUpgradeToPremium}
+          onGoToRoster={() => setShowRosterFromTeams(true)}
+        />
+
+        <TeamEditModal
+          visible={showTeamEdit}
+          team={editingTeam}
+          onSave={handleTeamSave}
+          onCancel={() => {
+            setShowTeamEdit(false);
+            setEditingTeam(null);
+          }}
+          onDelete={handleTeamDelete}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!game.isActive && showRosterFromTeams) {
+    return (
+      <SafeAreaProvider>
         <StatusBar style="auto" />
         <RosterScreen
           players={game.roster}
@@ -152,14 +351,16 @@ export default function App() {
           onPlayerUpdate={handlePlayerUpdate}
           onPlayerAdd={handlePlayerAdd}
           onPlayerDelete={handlePlayerDelete}
+          onBackToTeams={() => setShowRosterFromTeams(false)}
         />
-      </View>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar style="auto" />
       <Tab.Navigator
         screenOptions={{
           tabBarActiveTintColor: '#2196F3',
@@ -221,7 +422,39 @@ export default function App() {
             />
           )}
         </Tab.Screen>
+
+        <Tab.Screen
+          name="Teams"
+          options={{
+            title: 'Manage Teams',
+            tabBarLabel: 'Teams',
+          }}
+        >
+          {() => (
+            <View style={{ flex: 1 }}>
+              <TeamsScreen
+                coachProfile={coachProfile}
+                onTeamSelect={handleTeamSelect}
+                onTeamEdit={handleTeamEdit}
+                onCreateTeam={handleCreateTeam}
+                onUpgradeToPremium={handleUpgradeToPremium}
+              />
+
+              <TeamEditModal
+                visible={showTeamEdit}
+                team={editingTeam}
+                onSave={handleTeamSave}
+                onCancel={() => {
+                  setShowTeamEdit(false);
+                  setEditingTeam(null);
+                }}
+                onDelete={handleTeamDelete}
+              />
+            </View>
+          )}
+        </Tab.Screen>
       </Tab.Navigator>
-    </NavigationContainer>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

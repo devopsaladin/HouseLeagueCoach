@@ -23,13 +23,35 @@ export interface Period {
   actualDuration?: number;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  avatar?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  players: Player[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Game {
   id: string;
+  teamId: string;
   date: Date;
   settings: GameSettings;
   roster: Player[];
   periods: Period[];
   isActive: boolean;
+}
+
+export interface CoachProfile {
+  id: string;
+  name: string;
+  email?: string;
+  isPremium: boolean;
+  teams: Team[];
+  activeTeamId?: string;
+  subscriptionExpiry?: Date;
 }
 
 export interface LineupSuggestion {

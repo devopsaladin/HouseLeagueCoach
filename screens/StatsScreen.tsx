@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Player, Game } from '../types';
 
 interface StatsScreenProps {
@@ -176,7 +177,8 @@ export default function StatsScreen({ game }: StatsScreenProps) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
       {renderGameSummary()}
 
       <View style={styles.playingTimeContainer}>
@@ -221,14 +223,18 @@ export default function StatsScreen({ game }: StatsScreenProps) {
             ))}
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  container: {
+    flex: 1,
     padding: 16,
   },
   summaryContainer: {

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Player } from '../types';
 import PlayerEditModal from '../components/PlayerEditModal';
 
@@ -17,6 +18,7 @@ interface RosterScreenProps {
   onPlayerUpdate?: (player: Player) => void;
   onPlayerAdd?: (player: Player) => void;
   onPlayerDelete?: (playerId: string) => void;
+  onBackToTeams?: () => void;
 }
 
 export default function RosterScreen({
@@ -25,7 +27,8 @@ export default function RosterScreen({
   onStartGame,
   onPlayerUpdate,
   onPlayerAdd,
-  onPlayerDelete
+  onPlayerDelete,
+  onBackToTeams
 }: RosterScreenProps) {
   const presentPlayers = players.filter(p => p.isPresent);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
@@ -81,9 +84,17 @@ export default function RosterScreen({
   const existingJerseyNumbers = players.map(p => p.jerseyNumber);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
+          {onBackToTeams && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={onBackToTeams}
+            >
+              <Text style={styles.backButtonText}>← Teams</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.title}>Team Roster</Text>
           <TouchableOpacity
             style={styles.addButton}
@@ -167,7 +178,7 @@ export default function RosterScreen({
         onCancel={handleCancelEdit}
         existingJerseyNumbers={existingJerseyNumbers}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -185,6 +196,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  backButton: {
+    backgroundColor: '#6c757d',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   title: {
     fontSize: 24,
